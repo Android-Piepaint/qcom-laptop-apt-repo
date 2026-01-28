@@ -1,0 +1,56 @@
+name: Build Qualcomm ARM64 Kernel (APT)
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    env:
+      ARCH: arm64
+      DEBEMAIL: kernel@yourdomain.com
+      DEBFULLNAME: Qualcomm Kernel CI
+      LOCALVERSION: "-qcom-laptop"
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            build-essential fakeroot bc flex bison \
+            libncurses-dev libssl-dev libelf-dev \
+            libdw-dev dwarves rsync git \
+            debhelper dpkg-dev \
+            gcc-aarch64-linux-gnu
+
+      - name: Sync upstream kernel
+        run: |
+          bash scripts/sync-upstream.sh
+
+      - name: Configure kernel
+        run: |
+          cd linux
+          cp /boot/config-$(uname -r) .config || true
+          make ARCH=arm64 defconfig qcom_laptops.config
+
+      - name: Build kernel deb packages
+        run: |
+          cd linux
+          make -j$(nproc) ARCH=arm64 bindeb-pkg
+
+      - name: Collect deb packages
+        run: |
+          mkdir -p out
+          mv *.deb out/
+
+      - name: Publish APT repository
+        run: |
+          bash scripts/publish-apt.sh
