@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-arm64
 
     env:
       ARCH: arm64
@@ -29,11 +29,7 @@ jobs:
             libncurses-dev libssl-dev libelf-dev \
             libdw-dev dwarves rsync git \
             debhelper dpkg-dev \
-            gcc-aarch64-linux-gnu \
-            libssl-dev:arm64 \
-            libelf-dev:arm64 \
-            libdw-dev:arm64 \
-            libncurses-dev:arm64
+            
 
       - name: Sync upstream kernel
         run: |
@@ -42,12 +38,12 @@ jobs:
       - name: Configure kernel
         run: |
           cd linux
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig qcom_laptops.config
+          make defconfig qcom_laptops.config
 
       - name: Build kernel deb packages
         run: |
           cd linux
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j$(nproc) bindeb-pkg
+          make -j$(nproc) bindeb-pkg
 
       - name: Collect deb packages
         run: |
