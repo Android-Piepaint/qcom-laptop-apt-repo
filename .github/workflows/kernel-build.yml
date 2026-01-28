@@ -37,6 +37,7 @@ jobs:
 
       - name: Configure kernel
         run: |
+          cd linux
           make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig qcom_laptops.config
 
       - name: Build kernel deb packages
