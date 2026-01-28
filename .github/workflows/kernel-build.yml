@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-arm64
 
     env:
       ARCH: arm64
@@ -28,8 +28,7 @@ jobs:
             build-essential fakeroot bc flex bison \
             libncurses-dev libssl-dev libelf-dev \
             libdw-dev dwarves rsync git \
-            debhelper dpkg-dev \
-            gcc-aarch64-linux-gnu
+            debhelper dpkg-dev 
 
       - name: Sync upstream kernel
         run: |
@@ -37,14 +36,12 @@ jobs:
 
       - name: Configure kernel
         run: |
-          cd linux
-          cp /boot/config-$(uname -r) .config || true
           make ARCH=arm64 defconfig qcom_laptops.config
 
       - name: Build kernel deb packages
         run: |
           cd linux
-          make -j$(nproc) ARCH=arm64 bindeb-pkg
+          make -j$(nproc) bindeb-pkg
 
       - name: Collect deb packages
         run: |
