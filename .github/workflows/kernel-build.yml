@@ -90,15 +90,16 @@ jobs:
           gzip -kf \
             "${REPO}/dists/${APT_DIST}/${APT_COMPONENT}/binary-${ARCH}/Packages"
 
-          tee "${REPO}/dists/${APT_DIST}/Release" > /dev/null <<EOF
-Origin: Qualcomm ARM64 Kernel
-Label: Qualcomm ARM64 Kernel
-Suite: ${APT_DIST}
-Codename: ${APT_DIST}
-Architectures: ${ARCH}
-Components: ${APT_COMPONENT}
-Description: Linux kernel for Qualcomm ARM64 laptops
-EOF
+          {
+            echo "Origin: Qualcomm ARM64 Kernel"
+            echo "Label: Qualcomm ARM64 Kernel"
+            echo "Suite: ${APT_DIST}"
+            echo "Codename: ${APT_DIST}"
+            echo "Architectures: ${ARCH}"
+            echo "Components: ${APT_COMPONENT}"
+            echo "Description: Linux kernel for Qualcomm ARM64 laptops"
+          } > "${REPO}/dists/${APT_DIST}/Release"
+
 
       - name: Upload APT repository artifact
         uses: actions/upload-artifact@v4
