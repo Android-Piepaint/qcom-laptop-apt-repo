@@ -15,7 +15,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout workflow repo
@@ -62,7 +62,7 @@ jobs:
           export ARCH=${ARCH}
           export CROSS_COMPILE=${CROSS_COMPILE}
 
-          make -j$(nproc) bindeb-pkg
+          make -j$(nproc) bindeb-pkg DPKG_FLAGS="-d"
 
       - name: Collect deb packages
         run: |
