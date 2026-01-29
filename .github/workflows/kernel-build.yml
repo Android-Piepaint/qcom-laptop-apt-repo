@@ -102,29 +102,28 @@ jobs:
       # ------------------------------------------------------------
       # 8. Build APT repository
       # ------------------------------------------------------------
-      - name: Build APT repository
-        run: |
-          set -e
+     - name: Build APT repository
+  run: |
+    set -e
 
-          REPO=apt-repo
-          ARCH=arm64
+    REPO=apt-repo
+    ARCH=arm64
 
-          rm -rf "${REPO}"
-          mkdir -p \
-            "${REPO}/pool/${APT_COMPONENT}" \
-            "${REPO}/dists/${APT_DIST}/${APT_COMPONENT}/binary-${ARCH}"
+    rm -rf "${REPO}"
+    mkdir -p \
+      "${REPO}/pool/${APT_COMPONENT}" \
+      "${REPO}/dists/${APT_DIST}/${APT_COMPONENT}/binary-${ARCH}"
 
-          cp out/*.deb "${REPO}/pool/${APT_COMPONENT}/"
+    cp out/*.deb "${REPO}/pool/${APT_COMPONENT}/"
 
-          dpkg-scanpackages \
-            -a "${ARCH}" \
-            "pool/${APT_COMPONENT}" \
-            > "${REPO}/dists/${APT_DIST}/${APT_COMPONENT}/binary-${ARCH}/Packages"
+    dpkg-scanpackages -a "${ARCH}" \
+      "pool/${APT_COMPONENT}" \
+      > "${REPO}/dists/${APT_DIST}/${APT_COMPONENT}/binary-${ARCH}/Packages"
 
-          gzip -kf \
-            "${REPO}/dists/${APT_DIST}/${APT_COMPONENT}/binary-${ARCH}/Packages"
+    gzip -kf \
+      "${REPO}/dists/${APT_DIST}/${APT_COMPONENT}/binary-${ARCH}/Packages"
 
-          cat > "${REPO}/dists/${APT_DIST}/Release" <<EOF
+    tee "${REPO}/dists/${APT_DIST}/Release" > /dev/null <<EOF
 Origin: Qualcomm ARM64 Kernel
 Label: Qualcomm ARM64 Kernel
 Suite: ${APT_DIST}
