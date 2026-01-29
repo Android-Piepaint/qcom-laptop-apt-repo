@@ -1,55 +1,153 @@
-name: Build Qualcomm ARM64 Kernel (APT)
+name: Qualcomm ARM64 Kernel APT Build (x86 cross)
 
 on:
   schedule:
-    - cron: '0 3 * * *'  
+    - cron: '0 3 * * *'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
-    runs-on: ubuntu-22.04-arm64
+    runs-on: ubuntu-22.04
 
     env:
       ARCH: arm64
-      DEBEMAIL: kernel@yourdomain.com
-      DEBFULLNAME: Qualcomm Kernel CI
+      CROSS_COMPILE: aarch64-linux-gnu-
       LOCALVERSION: "-qcom-laptop"
+      DEBEMAIL: kernel-ci@users.noreply.github.com
+      DEBFULLNAME: Qualcomm Kernel CI
+      KERNEL_BRANCH: qcom-laptops
+      UPSTREAM_REPO: https://gitlab.com/Linaro/arm64-laptops/linux.git
+      APT_DIST: stable
+      APT_COMPONENT: main
 
     steps:
-      - name: Checkout repo
+      # ------------------------------------------------------------
+      # 1. Checkout
+      # ------------------------------------------------------------
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
+      # ------------------------------------------------------------
+      # 2. 啟用 arm64 multiarch
+      # ------------------------------------------------------------
+      - name: Enable arm64 multiarch
+        run: |
+          sudo dpkg --add-architecture arm64
+          sudo apt update
+
+      # ------------------------------------------------------------
+      # 3. 安裝 cross + arm64 build dependencies
+      # ------------------------------------------------------------
       - name: Install build dependencies
         run: |
-          sudo apt update
           sudo apt install -y \
             build-essential fakeroot bc flex bison \
-            libncurses-dev libssl-dev libelf-dev \
-            libdw-dev dwarves rsync git \
-            debhelper dpkg-dev \
-            
+            gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu \
+            libssl-dev:arm64 libelf-dev:arm64 libdw-dev:arm64 \
+            libncurses-dev:arm64 \
+            debhelper dpkg-dev dwarves rsync git
 
+      # ------------------------------------------------------------
+      # 4. Sync upstream kernel
+      # ------------------------------------------------------------
       - name: Sync upstream kernel
         run: |
-          bash scripts/sync-upstream.sh
+          set -e
+          if [ ! -d linux ]; then
+            git clone --branch "${KERNEL_BRANCH}" \
+              --depth=1 "${UPSTREAM_REPO}" linux
+          else
+            cd linux
+            git fetch origin
+            git reset --hard origin/${KERNEL_BRANCH}
+          fi
 
+      # ------------------------------------------------------------
+      # 5. Kernel configuration
+      # ------------------------------------------------------------
       - name: Configure kernel
         run: |
           cd linux
-          make defconfig qcom_laptops.config
 
+          make ARCH=arm64 defconfig
+
+          scripts/config --set-str LOCALVERSION "${LOCALVERSION}"
+          scripts/config --disable DEBUG_INFO
+          scripts/config --disable DEBUG_INFO_BTF
+
+          make ARCH=arm64 olddefconfig
+
+      # ------------------------------------------------------------
+      # 6. Build kernel deb packages (cross)
+      # ------------------------------------------------------------
       - name: Build kernel deb packages
         run: |
           cd linux
-          make -j$(nproc) bindeb-pkg
+          make -j$(nproc) \
+            ARCH=arm64 \
+            CROSS_COMPILE=${CROSS_COMPILE} \
+            bindeb-pkg
 
+      # ------------------------------------------------------------
+      # 7. Collect deb packages
+      # ------------------------------------------------------------
       - name: Collect deb packages
         run: |
           mkdir -p out
           mv *.deb out/
 
+      # ------------------------------------------------------------
+      # 8. Build APT repository
+      # ------------------------------------------------------------
+      - name: Build APT repository
+        run: |
+          set -e
+
+          REPO=apt-repo
+          ARCH=arm64
+
+          rm -rf "${REPO}"
+          mkdir -p \
+            "${REPO}/pool/${APT_COMPONENT}" \
+            "${REPO}/dists/${APT_DIST}/${APT_COMPONENT}/binary-${ARCH}"
+
+          cp out/*.deb "${REPO}/pool/${APT_COMPONENT}/"
+
+          dpkg-scanpackages \
+            -a "${ARCH}" \
+            "pool/${APT_COMPONENT}" \
+            > "${REPO}/dists/${APT_DIST}/${APT_COMPONENT}/binary-${ARCH}/Packages"
+
+          gzip -kf \
+            "${REPO}/dists/${APT_DIST}/${APT_COMPONENT}/binary-${ARCH}/Packages"
+
+          cat > "${REPO}/dists/${APT_DIST}/Release" <<EOF
+Origin: Qualcomm ARM64 Kernel
+Label: Qualcomm ARM64 Kernel
+Suite: ${APT_DIST}
+Codename: ${APT_DIST}
+Architectures: ${ARCH}
+Components: ${APT_COMPONENT}
+Description: Linux kernel for Qualcomm ARM64 laptops
+EOF
+
+      # ------------------------------------------------------------
+      # 9. Publish to gh-pages
+      # ------------------------------------------------------------
       - name: Publish APT repository
         run: |
-          bash scripts/publish-apt.sh
+          set -e
+
+          git config user.name "kernel-ci"
+          git config user.email "kernel-ci@users.noreply.github.com"
+
+          git checkout --orphan gh-pages
+          git rm -rf .
+          cp -r apt-repo/* .
+
+          git add .
+          git commit -m "Update APT repository ($(date -u +%Y-%m-%d))"
+          git push -f origin gh-pages
