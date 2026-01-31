@@ -72,24 +72,28 @@ jobs:
       - name: Build APT repository
         run: |
           set -e
-
           REPO=apt-repo
           ARCH=arm64
 
-          rm -rf "${REPO}"
+          
           mkdir -p \
             "${REPO}/pool/${APT_COMPONENT}" \
             "${REPO}/dists/${APT_DIST}/${APT_COMPONENT}/binary-${ARCH}"
 
+          
           cp out/*.deb "${REPO}/pool/${APT_COMPONENT}/"
 
+          
+          cd "${REPO}"
+          
           dpkg-scanpackages -a "${ARCH}" \
             "pool/${APT_COMPONENT}" \
-            > "${REPO}/dists/${APT_DIST}/${APT_COMPONENT}/binary-${ARCH}/Packages"
+            > "dists/${APT_DIST}/${APT_COMPONENT}/binary-${ARCH}/Packages"
 
           gzip -kf \
-            "${REPO}/dists/${APT_DIST}/${APT_COMPONENT}/binary-${ARCH}/Packages"
+            "dists/${APT_DIST}/${APT_COMPONENT}/binary-${ARCH}/Packages"
 
+          
           {
             echo "Origin: Qualcomm ARM64 Kernel"
             echo "Label: Qualcomm ARM64 Kernel"
@@ -98,7 +102,7 @@ jobs:
             echo "Architectures: ${ARCH}"
             echo "Components: ${APT_COMPONENT}"
             echo "Description: Linux kernel for Qualcomm ARM64 laptops"
-          } > "${REPO}/dists/${APT_DIST}/Release"
+          } > "dists/${APT_DIST}/Release"
 
 
       - name: Upload APT repository artifact
