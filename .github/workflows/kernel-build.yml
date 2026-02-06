@@ -67,10 +67,6 @@ jobs:
           <body>
             <h1>QCOM Laptop Kernel APT Repo</h1>
             <p>This is an APT repository.</p>
-            <p>Use:</p>
-            <pre>
-          deb [trusted=yes] https://android-piepaint.github.io/qcom-laptop-apt-repo/ ./
-            </pre>
           </body>
           </html>
           EOF
