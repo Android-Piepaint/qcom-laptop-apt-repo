@@ -21,11 +21,23 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt update
-          sudo apt install -y \
-            build-essential bc bison flex \
-            libssl-dev libelf-dev libdw-dev \
-            debhelper-compat fakeroot \
-            dwarves git rsync python3
+          sudo apt-get install -y \
+            build-essential \
+            bc \
+            bison \
+            flex \
+            libssl-dev \
+            libelf-dev \
+            libncurses-dev \
+            libdw-dev \
+            dwarves \
+            debhelper-compat \
+            fakeroot \
+            dpkg-dev \
+            git \
+            ccache \
+            gcc-aarch64-linux-gnu
+
 
       - name: Clone kernel source
         run: |
@@ -35,60 +47,72 @@ jobs:
 
       - name: Prepare kernel config
         run: |
+          export ARCH=${ARCH}
+          export CROSS_COMPILE=${CROSS_COMPILE}
+
+
           cd linux
           make qcom_laptops.config defconfig
 
       - name: Build kernel deb packages
         run: |
           cd linux
-          make -j$(nproc) bindeb-pkg
+          export ARCH=${ARCH}
+          export CROSS_COMPILE=${CROSS_COMPILE}
+
+
+          make -j$(nproc) bindeb-pkg DPKG_FLAGS="-d"
 
       - name: Collect deb packages
         run: |
           mkdir -p repo/pool
           mv ../*.deb repo/pool/
 
+      - name: Collect deb packages
+        run: |
+          mkdir -p out
+          mv *.deb out/
       - name: Build APT repository
         run: |
-          sudo apt install -y dpkg-dev
-          cd repo
-          dpkg-scanpackages pool /dev/null > Packages
-          gzip -9c Packages > Packages.gz
-
-      - name: Add index.html (optional)
-        run: |
-          cat > repo/index.html <<'EOF'
-          <!doctype html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <title>QCOM Laptop APT Repository</title>
-          </head>
-          <body>
-            <h1>QCOM Laptop Kernel APT Repo</h1>
-            <p>This is an APT repository.</p>
-          </body>
-          </html>
-          EOF
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+          set -e
+          REPO=apt-repo
+          ARCH=arm64
+          
+          mkdir -p \
+            "${REPO}/pool/${APT_COMPONENT}" \
+            "${REPO}/dists/${APT_DIST}/${APT_COMPONENT}/binary-${ARCH}"
+          
+          cp out/*.deb "${REPO}/pool/${APT_COMPONENT}/"
+          
+          cd "${REPO}"
+          
+          dpkg-scanpackages -a "${ARCH}" \
+            "pool/${APT_COMPONENT}" \
+            > "dists/${APT_DIST}/${APT_COMPONENT}/binary-${ARCH}/Packages"
+          gzip -kf \
+            "dists/${APT_DIST}/${APT_COMPONENT}/binary-${ARCH}/Packages"
+          
+          {
+            echo "Origin: Qualcomm ARM64 Kernel"
+            echo "Label: Qualcomm ARM64 Kernel"
+            echo "Suite: ${APT_DIST}"
+            echo "Codename: ${APT_DIST}"
+            echo "Architectures: ${ARCH}"
+            echo "Components: ${APT_COMPONENT}"
+            echo "Description: Linux kernel for Qualcomm ARM64 laptops"
+          } > "dists/${APT_DIST}/Release"
+      - name: Upload APT repository artifact
+        uses: actions/upload-artifact@v4
         with:
-          path: repo
+          name: apt-repo
+          path: apt-repo
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-22.04
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
 
-    steps:
-      - name: Deploy APT repo to GitHub Pages
+      - name: Deploy APT repository to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: apt-repo
           publish_branch: gh-pages
-          publish_dir: ./repo
           force_orphan: true
 
