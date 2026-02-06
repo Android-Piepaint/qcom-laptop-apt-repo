@@ -55,6 +55,26 @@ jobs:
           dpkg-scanpackages pool /dev/null > Packages
           gzip -9c Packages > Packages.gz
 
+      - name: Add index.html (optional)
+        run: |
+          cat > repo/index.html <<'EOF'
+          <!doctype html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <title>QCOM Laptop APT Repository</title>
+          </head>
+          <body>
+            <h1>QCOM Laptop Kernel APT Repo</h1>
+            <p>This is an APT repository.</p>
+            <p>Use:</p>
+            <pre>
+deb [trusted=yes] https://android-piepaint.github.io/qcom-laptop-apt-repo/ ./
+            </pre>
+          </body>
+          </html>
+          EOF
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
