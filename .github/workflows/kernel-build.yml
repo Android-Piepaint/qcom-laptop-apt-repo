@@ -110,3 +110,12 @@ jobs:
         with:
           name: apt-repo
           path: apt-repo
+
+
+      - name: Deploy APT repository to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: apt-repo
+          publish_branch: gh-pages
+          force_orphan: true
