@@ -47,8 +47,8 @@ jobs:
 
       - name: Prepare kernel config
         run: |
-          export ARCH=${ARCH}
-          export CROSS_COMPILE=${CROSS_COMPILE}
+          export ARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
 
 
           cd linux
@@ -57,8 +57,8 @@ jobs:
       - name: Build kernel deb packages
         run: |
           cd linux
-          export ARCH=${ARCH}
-          export CROSS_COMPILE=${CROSS_COMPILE}
+          export ARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
 
 
           make -j$(nproc) bindeb-pkg DPKG_FLAGS="-d"
@@ -101,6 +101,8 @@ jobs:
             echo "Components: ${APT_COMPONENT}"
             echo "Description: Linux kernel for Qualcomm ARM64 laptops"
           } > "dists/${APT_DIST}/Release"
+
+
       - name: Upload APT repository artifact
         uses: actions/upload-artifact@v4
         with:
