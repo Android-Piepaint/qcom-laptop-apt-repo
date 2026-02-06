@@ -88,6 +88,11 @@ deb [trusted=yes] https://android-piepaint.github.io/qcom-laptop-apt-repo/ ./
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Deploy APT repo to GitHub Pages
+    uses: peaceiris/actions-gh-pages@v4
+    with:
+      github_token: ${{ secrets.GITHUB_TOKEN }}
+      publish_branch: gh-pages
+      publish_dir: ./repo
+      force_orphan: true
+
