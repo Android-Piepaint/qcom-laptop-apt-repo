@@ -66,51 +66,36 @@ jobs:
 
       - name: Collect deb packages
         run: |
-          mkdir -p out
-          mv *.deb out/
+          mkdir -p repo/pool
+          mv ../*.deb repo/pool/
+
       - name: Build APT repository
         run: |
-          set -e
-          REPO=apt-repo
-          ARCH=arm64
-          
-          mkdir -p \
-            "${REPO}/pool/${APT_COMPONENT}" \
-            "${REPO}/dists/${APT_DIST}/${APT_COMPONENT}/binary-${ARCH}"
-          
-          cp out/*.deb "${REPO}/pool/${APT_COMPONENT}/"
-          
-          cd "${REPO}"
-          
-          dpkg-scanpackages -a "${ARCH}" \
-            "pool/${APT_COMPONENT}" \
-            > "dists/${APT_DIST}/${APT_COMPONENT}/binary-${ARCH}/Packages"
-          gzip -kf \
-            "dists/${APT_DIST}/${APT_COMPONENT}/binary-${ARCH}/Packages"
-          
-          {
-            echo "Origin: Qualcomm ARM64 Kernel"
-            echo "Label: Qualcomm ARM64 Kernel"
-            echo "Suite: ${APT_DIST}"
-            echo "Codename: ${APT_DIST}"
-            echo "Architectures: ${ARCH}"
-            echo "Components: ${APT_COMPONENT}"
-            echo "Description: Linux kernel for Qualcomm ARM64 laptops"
-          } > "dists/${APT_DIST}/Release"
+          sudo apt install -y dpkg-dev
+          cd repo
+          dpkg-scanpackages pool /dev/null > Packages
+          gzip -9c Packages > Packages.gz
 
 
-      - name: Upload APT repository artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: apt-repo
-          path: apt-repo
+          path: repo
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-22.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
-      - name: Deploy APT repository to GitHub Pages
+    steps:
+      - name: Deploy APT repo to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: apt-repo
           publish_branch: gh-pages
+          publish_dir: ./repo
           force_orphan: true
+
 
