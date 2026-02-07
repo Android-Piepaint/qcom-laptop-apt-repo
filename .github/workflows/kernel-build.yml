@@ -63,10 +63,6 @@ jobs:
 
           make -j$(nproc) bindeb-pkg DPKG_FLAGS="-d"
 
-      - name: Collect deb packages
-        run: |
-          mkdir -p repo/pool
-          mv ../*.deb repo/pool/
 
       - name: Collect deb packages
         run: |
