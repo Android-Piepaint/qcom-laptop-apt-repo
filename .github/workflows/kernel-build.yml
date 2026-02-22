@@ -46,18 +46,18 @@ jobs:
             https://gitlab.com/Linaro/arm64-laptops/linux.git linux
 
       - name: Prepare kernel config
+        working-directory: linux
         run: |
           export ARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
 
 
-          cd linux
+          
           make qcom_laptops.config defconfig
 
       - name: Build kernel deb packages
-      	working-directory: linux
+        working-directory: linux
         run: |
-          cd linux
           export ARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
 
