@@ -55,6 +55,7 @@ jobs:
           make qcom_laptops.config defconfig
 
       - name: Build kernel deb packages
+      	working-directory: linux
         run: |
           cd linux
           export ARCH=arm64
@@ -67,7 +68,8 @@ jobs:
       - name: Collect deb packages
         run: |
           mkdir -p repo/pool
-          mv ../*.deb repo/pool/
+          ls -lh *.deb
+          mv *.deb repo/pool/
 
       - name: Build APT repository
         run: |
